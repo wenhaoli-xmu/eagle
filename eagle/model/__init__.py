@@ -1,0 +1,1 @@
+from .language_model.eagle_llama_v4 import EagleLlamaForCausalLM, EagleConfig
