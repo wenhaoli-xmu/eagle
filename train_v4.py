@@ -939,7 +939,11 @@ class LazySupervisedDataset(Dataset):
             try:
                 image = Image.open(os.path.join(image_folder, image_file)).convert('RGB')
             except:
-                print(f'image file {os.path.join(image_folder, image_file)} broken.., using a dummy black image instead')
+                from pygments.console import colorize
+                info = colorize(
+                    'red', 
+                    f'image file {os.path.join(image_folder, image_file)} broken.., using a dummy black image instead')
+                print(info)
                 image = Image.fromarray(np.zeros((224,224,3), dtype=np.uint8))
             if self.data_args.image_aspect_ratio == 'pad':
                 def expand2square(pil_img, background_color):
@@ -1287,8 +1291,15 @@ def train(attn_implementation=None):
             mags[category].update({name: mag})
             lens[category].update({name: length})
 
-        def training_step(self, model: nn.Module, inputs: Dict[str, Union[torch.Tensor, Any]], mags, lens) -> torch.Tensor:
+        def red(x):
+            from pygments.console import colorize
+            return colorize('red', x)
+        
+        def green(x):
+            from pygments.console import colorize
+            return colorize('green', x)
 
+        def training_step(self, model: nn.Module, inputs: Dict[str, Union[torch.Tensor, Any]], mags, lens) -> torch.Tensor:
             model.train()
             inputs = self._prepare_inputs(inputs)
 
@@ -1312,20 +1323,20 @@ def train(attn_implementation=None):
             else:
                 self.accelerator.backward(loss)
 
-            has_nonzero = False
+            count = 0
             for mag in mags.values():
                 for m in mag.values():
                     if m > 0:
-                        has_nonzero = True
+                        count += 1
 
-            if has_nonzero:
-                if dist.is_initialized() and dist.get_rank() == 0 or not dist.is_initialized():
-                    IPython.embed(header='visualization done!')
-
-            print(has_nonzero)
+            print(red(f'rank-{dist.get_rank()}') + green(f'{count}'))
 
             if dist.is_initialized():
+                if dist.get_rank() == 0:
+                    IPython.embed(header='visualization done!')
                 dist.barrier()
+            else:
+                IPython.embed(header='visualization done!')
 
         trainer.training_step = types.MethodType(partial(training_step, mags=mags, lens=lens), trainer)
         return 0

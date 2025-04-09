@@ -5,19 +5,19 @@ MASTER_ADDR=`scontrol show hostname $SLURM_JOB_NODELIST | head -n1`
 MASTER_PORT=$((RANDOM % 101 + 20000))
 PATH_TO_SFT_DATA=data
 PATH_TO_PRETRAINED_PROJECTOR=checkpoints/pretrain_weighted
-NAME=test
+DATA=$1
 
 python -m torch.distributed.run \
-    --nproc_per_node 4 \
+    --nproc_per_node 8 \
     --master_addr $MASTER_ADDR \
     --master_port $MASTER_PORT \
     train_mem_v4.py \
-    --deepspeed ./scripts/zero3.json \
+    --deepspeed ./scripts/zero2.json \
     --model_name_or_path lmsys/vicuna-7b-v1.5 \
     --mm_vision_sample_feature True \
     --mm_vision_sample_num 3 \
     --version v1 \
-    --data_path $PATH_TO_SFT_DATA/eagle-1-sft-1_8M.json \
+    --data_path $PATH_TO_SFT_DATA/$DATA \
     --image_folder $PATH_TO_SFT_DATA \
     --vision_tower "clip-448;convnext-1024;det-1024;pix2struct-1024" \
     --pretrain_mm_mlp_adapter $PATH_TO_PRETRAINED_PROJECTOR/mm_projector.bin \
@@ -28,7 +28,7 @@ python -m torch.distributed.run \
     --image_aspect_ratio pad \
     --group_by_modality_length True \
     --bf16 True \
-    --output_dir checkpoints/$NAME \
+    --output_dir checkpoints/test \
     --num_train_epochs 1 \
     --per_device_train_batch_size 1 \
     --per_device_eval_batch_size 1 \
@@ -48,5 +48,4 @@ python -m torch.distributed.run \
     --dataloader_num_workers 4 \
     --lazy_preprocess True \
     --report_to none \
-    --run_name ${NAME} \
     --visualize True
